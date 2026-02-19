@@ -1,3 +1,9 @@
+### Important Dependencies
+
+1. Download Metadata.package from "https://drive.google.com/file/d/1w1Xl1pmdvdj3k7xuR9l8d7hOza0_qmHn/view?usp=sharing".
+
+2. Add file to OneClickServer Directory.
+
 ## Troubleshooting Guide
 
 ### If Errors Occur Without Proper Failure Analysis, Check the Following:
