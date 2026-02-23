@@ -1,5 +1,5 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
 for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
 title OneClick Minecraft Servers
 echo Checking Architecture...
@@ -16,7 +16,11 @@ powershell -Command "Expand-Archive -Path 'Metadata.zip' -DestinationPath 'libs'
 ren "Metadata.zip" "Metadata.package"
 ) else echo %ESC%[32mArchitecture Functional...%ESC%[0m
 :2
+if exist "mods" (
+for /f %%A in ('dir /b "mods" 2^>nul') do (
 robocopy "mods" "server\mods" /E /NFL /NDL /NJH /NJS /NP
+)
+)
 set /p "MODE=Enter Instructions: "
 if /I "%MODE%"=="help" goto help1
 if /I "%MODE%"=="Create" goto 1
@@ -27,23 +31,22 @@ goto 2
 :help1
 echo List of Possible Instructions:
 echo Help, Shows this help.
+echo Version, Shows the product version.
 echo Create, Creates/Overwrites the Current Server.
 goto 2
 :Ver
 echo =======================
-echo Version: 0.73
+echo Version: 0.80
 echo =======================
 goto 2
 :1
-if exist server\* (
+for %%A in (server\*) do (
 echo %ESC%[31mWARNING: This Action will Overwrite the Server%ESC%[0m
 set /p "AOW=Do you want to Overwrite the Server?(y/n)"
-if /I "%AOW%"=="n" goto 2
-if /I "%AOW%"=="y" goto 3
-if /I not "%AOW%"=="n" if /I not "%AOW%"=="y" (
+if /I "!AOW!"=="n" goto 2
+if /I "!AOW!"=="y" goto 3
 echo %ESC%[33mSyntax Error: Assuming NO...%ESC%[0m
 goto 2
-)
 )
 :3
 if not exist "server" mkdir server
@@ -165,16 +168,20 @@ goto 3
 :fullload2
 echo setlocal enabledelayedexpansion > server\stop.bat
 echo taskkill /f /im java.exe >> server\stop.bat
-echo for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /R "IPv4 Address"') do set SERVER_IP=%%a >> server\stop.bat
-echo set SERVER_IP=!SERVER_IP: =! >> server\stop.bat
-echo echo Using server IP: !SERVER_IP! >> server\stop.bat
-echo cd .. >> server\stop.bat
-echo libs\mcrcon -H !SERVER_IP! -P 25575 -p 2Usn4HJa9osTuKwHJfP3 "stop" >> server\stop.bat
+echo exit >> server\stop.bat
+echo setlocal enabledelayedexpansion > server\restart.bat
+echo start "" stop.bat >> server\restart.bat
+echo timeout /t 2 /nobreak >> server\restart.bat
+echo start "" run.bat >> server\restart.bat
 powershell -Command "(gc server\server.properties) -replace 'rcon=false','rcon=true' | Out-File server\server.properties -encoding ascii"
 echo rcon.password=2Usn4HJa9osTuKwHJfP3 >> server\server.properties
 echo rcon.port=25575 >> server\server.properties
 taskkill /f /im java.exe
+if exist "mods" (
+for /f %%A in ('dir /b "mods" 2^>nul') do (
 robocopy "mods" "server\mods" /E /NFL /NDL /NJH /NJS /NP
+)
+)
 timeout /t 2 /nobreak
 cd server
 start "" run.bat
