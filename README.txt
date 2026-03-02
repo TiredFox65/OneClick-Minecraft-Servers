@@ -1,6 +1,6 @@
 ### Important Dependencies
 
-1. Download Metadata.package from "https://drive.google.com/file/d/1w1Xl1pmdvdj3k7xuR9l8d7hOza0_qmHn/view?usp=sharing".
+1. Download Metadata.package from "https://drive.google.com/file/d/16GsEJTC31MVqMMzVCLadh7Tsiz0SOJiZ/view?usp=sharing".
 
 2. Add file to OneClickServer Directory.
 
@@ -8,16 +8,13 @@
 
 ### If Errors Occur Without Proper Failure Analysis, Check the Following:
 
-1. **Is the Correct Version of Java Installed?**
-   - Check the "libs\java" folder for the required installers.
-
-2. **Could It Be a Firewall Issue?**
+1. **Could It Be a Firewall Issue?**
    - Ensure that your firewall isn’t blocking the necessary connections.
 
-3. **Have You Tried Restarting?**
+2. **Have You Tried Restarting?**
    - Close "Main.bat" and reopen it to see if the issue resolves.
 
-4. **Do You Have at Least 4GB of Available RAM?**
+3. **Do You Have at Least 1GB of Available RAM?**
    - Ensure you meet the minimum RAM requirements for smooth operation.
 
 ---
