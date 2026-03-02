@@ -41,6 +41,7 @@ goto 2
 cd server
 start "" ..\libs\java\jdk-17.0.0.1\bin\java.exe !JVM_ARGS! -jar forge-1.16.5-36.2.34.jar
 cd ..
+goto 2
 :help1
 echo List of Possible Instructions:
 echo Help, Shows this help.
