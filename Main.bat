@@ -39,7 +39,9 @@ tasklist | find "java.exe"
 goto 2
 :GBL
 cd server
+start "" ..\libs\java\java-se-8u44-ri\bin\java.exe !JVM_ARGS! -jar minecraft_server.1.12.2.jar
 start "" ..\libs\java\jdk-17.0.0.1\bin\java.exe !JVM_ARGS! -jar forge-1.16.5-36.2.34.jar
+start "" ..\libs\java\jdk-20\bin\java.exe @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.4.10/win_args.txt %*
 cd ..
 goto 2
 :help1
