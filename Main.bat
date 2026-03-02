@@ -15,8 +15,7 @@ ren "Metadata.package" "Metadata.zip"
 powershell -Command "Expand-Archive -Path 'Metadata.zip' -DestinationPath 'libs' -Force"
 ren "Metadata.zip" "Metadata.package"
 ) else echo %ESC%[32mArchitecture Functional...%ESC%[0m
-for /f "skip=1 tokens=1" %%A in ('powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory"') do if not defined TotalRAM set /a TotalRAM=%%A
-set /a TotalRAM_GB=TotalRAM / 1073741824
+for /f %%A in ('powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB -as [int]"') do set TotalRAM_GB=%%A
 echo Total system RAM detected: %TotalRAM_GB% GB
 :2
 if exist "mods" (
@@ -30,6 +29,7 @@ if /I "%MODE%"=="help" goto help1
 if /I "%MODE%"=="Create" goto 1
 if /I "%MODE%"=="Settings" goto settings
 if /I "%MODE%"=="Status" goto status
+if /I "%MODE%"=="Graphical" goto GBL
 if /I "%MODE%"=="Version" goto Ver
 if /I "%MODE%"=="Exit" exit
 echo Syntax Error (try "Help")
@@ -37,12 +37,17 @@ goto 2
 :status
 tasklist | find "java.exe"
 goto 2
+:GBL
+cd server
+start "" ..\libs\java\jdk-17.0.0.1\bin\java.exe !JVM_ARGS! -jar forge-1.16.5-36.2.34.jar
+cd ..
 :help1
 echo List of Possible Instructions:
 echo Help, Shows this help.
 echo Version, Shows the product version.
 echo Settings, opens the Settings menu.
 echo Create, Creates/Overwrites the Current Server.
+echo Graphical, Starts the Server with a Dedicated GUI(may fail if Java Dependencies missing).
 echo Status, shows the Status of the server.
 echo Exit, exits the program.
 goto 2
@@ -59,7 +64,7 @@ echo Version: 0.91
 echo =======================
 goto 2
 :settings
-set /p "MODE1=Enter Instructions: "
+set /p "MODE1=Enter Settings: "
 if /I "%MODE1%"=="help" goto help3
 if /I "%MODE1%"=="ram" goto setram
 if /i "%MODE1%"=="rcon" goto rcon
@@ -223,8 +228,7 @@ set "JVM_ARGS=!JVM_ARGS! %%A"
 set "JVM_ARGS=%%A")
 )
 echo Creation in Progress...
-for /f "skip=1 tokens=1" %%A in ('powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory"') do if not defined TotalRAM set /a TotalRAM=%%A
-set /a TotalRAM_GB=TotalRAM / 1073741824
+for /f %%A in ('powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB -as [int]"') do set TotalRAM_GB=%%A
 echo Total system RAM detected: %TotalRAM_GB% GB
 if /I "%VERSION%"=="forge-1.12.2" goto CRFo1.12.2
 if /I "%VERSION%"=="forge-1.16.5" goto CRFo1.16.5
