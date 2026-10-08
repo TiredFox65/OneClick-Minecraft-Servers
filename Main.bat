@@ -19,6 +19,7 @@ set "JAVA_PATH="
 java -version >nul 2>&1
 for /f "tokens=3" %%i in ('java -version 2^>^&1 ^| findstr /C:"version"') do set "JAVA_VERSION=%%~i"
 for /f "delims=" %%i in ('where java.exe 2^>^&1 ^| findstr /C:!JAVA_VERSION!') do set "JAVA_PATH=%%i"
+java -version >nul 2>&1 && set "installedjava=1" || set "installedjava=0"
 :system_info
 if %TotalRAM_GB% GTR 127 (
 echo %ESC%[91mTotal %ESC%[33msystem %ESC%[93mRAM %ESC%[92mdetected: %ESC%[36m%TotalRAM_GB% GB %ESC%[34m^(Holy %ESC%[95mMoly^^!^)%ESC%[0m
@@ -31,9 +32,14 @@ echo %ESC%[33mTotal system RAM detected: %TotalRAM_GB% GB%ESC%[0m
 ) else if %TotalRAM_GB% GTR 7 (
 echo %ESC%[31mTotal system RAM detected: %TotalRAM_GB% GB ^(Seriously?^)%ESC%[0m
 )
+if installedjava==0 (
+echo %ESC%[31mJava is NOT installed or not in PATH.%ESC%[0m
+) else (
+echo %ESC%[32mJava is installed and in PATH.%ESC%[0m
 echo %ESC%[32mJava version: !JAVA_VERSION!%ESC%[0m
 echo %ESC%[32mJava found at: !JAVA_PATH!%ESC%[0m
-if internet==false (
+)
+if internet=="false" (
 echo %ESC%[31mInternet Available: !internet!%ESC%[0m
 ) else (
 echo %ESC%[32mInternet Available: !internet!%ESC%[0m
@@ -47,17 +53,89 @@ if /I "!MODE!"=="Create" goto 1
 if /I "!MODE!"=="Settings" goto settings
 if /I "!MODE!"=="Status" goto status
 if /I "!MODE!"=="Graphical" goto GBL
-if /I "!MODE!"=="Start" start "MCServer" run.bat && goto 2
+if /I "!MODE!"=="Start" start "MCServer" start.bat && goto 2
 if /I "!MODE!"=="Stop" start "tmp" stop.bat && goto 2
 if /I "!MODE!"=="Restart" start "tmp" restart.bat && goto 2
+if /I "!MODE!"=="Backups" goto backups
 if /I "!MODE!"=="Version" goto Ver
 if /I "!MODE!"=="Exit" exit
 if /I "!MODE!"=="Clear" goto cls1
 echo Syntax Error (try "Help")
 goto 2
+:backups
+if not exist "backups" mkdir backups
+set "SERVERUP=false"
+tasklist /FI "IMAGENAME eq java.exe" /NH | findstr /I /C:"java.exe" >nul && set "SERVERUP=true"
+if %SERVERUP%==true (
+echo %ESC%[31mERROR: Backups can only be done when the server is stopped.%ESC%[0m
+goto 2
+)
+set /p "BACKUPMODE=Enter Backup Instructions> "
+if /I "!BACKUPMODE!"=="help" goto help4
+if /I "!BACKUPMODE!"=="create" goto backup
+if /I "!BACKUPMODE!"=="restore" goto restore
+if /I "!BACKUPMODE!"=="back" goto 2
+if /I "!BACKUPMODE!"=="load" goto backupload
+goto backups
+:backupload
+set /p "BACKUPNAME=Backup Name to Load> "
+if not exist "backups\%BACKUPNAME%.bak" (
+echo %ESC%[31mERROR: Backup not found.%ESC%[0m
+goto backups
+)
+del backups\restore.bak 2>nul
+rmdir /s /q backups\restore 2>nul
+robocopy server backups\restore /E /Z /R:3 /W:5
+tar -a -c -f backups\restore.bak -C backups\restore .
+rmdir /s /q backups\restore
+rmdir /s /q server
+mkdir server
+tar -xf "backups\%BACKUPNAME%.bak" -C "server"
+if exist "server\backups\%BACKUPNAME%\" (
+robocopy "server\backups\%BACKUPNAME%" "server" /E /R:3 /W:5 >nul
+if errorlevel 8 (
+echo %ESC%[31mERROR: Could not move the loaded server files into the server directory.%ESC%[0m
+goto backups
+)
+rmdir /s /q "server\backups\%BACKUPNAME%"
+rmdir "server\backups" 2>nul
+)
+echo %ESC%[32mBackup Loaded.%ESC%[0m
+goto backups
+:restore
+rmdir /s /q server
+mkdir server
+tar -xf "backups\restore.bak" -C "server"
+if exist "server\backups\restore\" (
+robocopy "server\backups\restore" "server" /E /R:3 /W:5 >nul
+if errorlevel 8 (
+echo %ESC%[31mERROR: Could not move the restored server files into the server directory.%ESC%[0m
+goto backups
+)
+rmdir /s /q "server\backups\restore"
+rmdir "server\backups" 2>nul
+)
+echo %ESC%[32mServer Restored.%ESC%[0m
+goto backups
+:backup
+set /p "BACKUPNAME=Enter Backup Name> "
+robocopy server backups\%BACKUPNAME% /E /Z /R:3 /W:5
+tar -a -c -f backups\%BACKUPNAME%.bak -C backups\%BACKUPNAME% .
+rmdir /s /q backups\%BACKUPNAME%
+echo %ESC%[32mBackup Complete.%ESC%[0m
+goto backups
+:help4
+echo List of Possible Instructions:
+echo Create, Creates a Backup of the Server.
+echo Load, Loads a Backup of the Server.
+echo Restore, Restores the Server from latest load overwrite.
+echo Help, Shows this help.
+echo Back, goes back.
+goto backups
 :status
-tasklist | find "java.exe" >nul && set "statjava=true" || set "statjava=false"
-if not defined %statjava% (
+if /I "!SERVERUP!"=="true" (
+echo %ESC%[32mMinecraft server is running.%ESC%[0m
+) else (
 echo %ESC%[33mNo Java Server or Process Running on Machine.%ESC%[0m
 )
 goto 2
@@ -74,9 +152,14 @@ echo %ESC%[33mTotal system RAM detected: %TotalRAM_GB% GB%ESC%[0m
 ) else if %TotalRAM_GB% GTR 7 (
 echo %ESC%[31mTotal system RAM detected: %TotalRAM_GB% GB ^(Seriously?^)%ESC%[0m
 )
+if installedjava==0 (
+echo %ESC%[31mJava is NOT installed or not in PATH.%ESC%[0m
+) else (
+echo %ESC%[32mJava is installed and in PATH.%ESC%[0m
 echo %ESC%[32mJava version: !JAVA_VERSION!%ESC%[0m
 echo %ESC%[32mJava found at: !JAVA_PATH!%ESC%[0m
-if internet==false (
+)
+if internet=="false" (
 echo %ESC%[31mInternet Available: !internet!%ESC%[0m
 ) else (
 echo %ESC%[32mInternet Available: !internet!%ESC%[0m
@@ -94,9 +177,14 @@ echo %ESC%[33mTotal system RAM detected: %TotalRAM_GB% GB%ESC%[0m
 ) else if %TotalRAM_GB% GTR 7 (
 echo %ESC%[31mTotal system RAM detected: %TotalRAM_GB% GB ^(Seriously?^)%ESC%[0m
 )
+if installedjava==0 (
+echo %ESC%[31mJava is NOT installed or not in PATH.%ESC%[0m
+) else (
+echo %ESC%[32mJava is installed and in PATH.%ESC%[0m
 echo %ESC%[32mJava version: !JAVA_VERSION!%ESC%[0m
 echo %ESC%[32mJava found at: !JAVA_PATH!%ESC%[0m
-if internet==false (
+)
+if internet=="false" (
 echo %ESC%[31mInternet Available: !internet!%ESC%[0m
 ) else (
 echo %ESC%[32mInternet Available: !internet!%ESC%[0m
@@ -106,20 +194,23 @@ goto settings
 cd server
 start "MCServer" java !JVM_ARGS! -jar minecraft_server.1.12.2.jar
 start "MCServer" java !JVM_ARGS! -jar forge-1.16.5-36.2.34.jar
-start "MCServer" java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.4.10/win_args.txt %*
+start "MCServer" java !JVM_ARGS! @libraries/net/minecraftforge/forge/1.20.1-47.4.10/win_args.txt %*
+start "MCServer" java !JVM_ARGS! -jar .fabric/server/1.16.5-server.jar
+start "MCServer" java !JVM_ARGS! -jar server.jar
 cd ..
 goto 2
 :help1
 echo List of Possible Instructions:
 echo Help, Shows this help.
 echo Version, Shows the product version.
-echo Settings, opens the Settings menu.
+echo Settings, Opens the Settings menu.
 echo Create, Creates/Overwrites the Current Server.
 echo Graphical, Starts the Server with a Dedicated GUI.
-echo Start, Starts the Server in the Background.
-echo Stop, Stops the Server in the Background.
-echo Restart, Restarts the Server in the Background.
+echo Start, Starts the Server.
+echo Stop, Force Quits the Server.^(use stop in server console for graceful shutdown^)
+echo Restart, Force Restarts the Server.^(use stop in server console for graceful shutdown^)
 echo Status, shows the Status of the server.
+echo Backups, Opens the Backup menu.
 echo Clear, clears the screen.
 echo Exit, exits the program.
 goto 2
@@ -131,7 +222,7 @@ echo Back, goes back.
 goto settings
 :Ver
 echo =======================
-echo Version: 1.07
+echo Version: 2.0
 echo =======================
 goto 2
 :settings
@@ -141,10 +232,6 @@ if /I "!MODE1!"=="ram" goto setram
 if /I "!MODE1!"=="clear" goto cls2
 if /I "!MODE1!"=="back" goto 2
 echo Syntax Error (try "Help")
-goto settings
-:SRCP
-powershell -Command "(gc 'server\server.properties') -replace 'rcon.password=.*','rcon.password=%RCPC%' | Out-File 'server\server.properties' -encoding ascii"
-echo New Password set to: %RCPC%
 goto settings
 :setram
 set ModsEmpty=1
@@ -227,10 +314,10 @@ goto 2
 )
 :3
 if not exist "server\mods" mkdir server\mods
-if not exist "run.bat" (
-echo cd server > run.bat
-echo start "MCServer" run.bat >> run.bat
-echo exit >> run.bat
+if not exist "start.bat" (
+echo cd server > start.bat
+echo start "MCServer" run.bat >> start.bat
+echo exit >> start.bat
 )
 if not exist "stop.bat" (
 echo cd server > stop.bat
@@ -281,8 +368,10 @@ del installer.jar
 goto fullload
 :fabric1.16.5
 echo Loading Fabric 1.16.5...
+cd server
 curl https://meta.fabricmc.net/v2/versions/loader/1.16.5/0.19.3/1.1.1/server/jar -o server.jar
 java -jar server.jar server -mcversion 1.16.5 -loader 0.19.3 -downloadMinecraft -dir server
+cd ..
 goto fullload
 :fabric1.20.1
 echo Loading Fabric 1.20.1...
@@ -310,6 +399,7 @@ if /I "!VERSION!"=="forge-1.20.1" goto CRFo1.20.1
 if /I "!VERSION!"=="fabric-1.16.5" goto CRFa1.16.5
 if /I "!VERSION!"=="fabric-1.20.1" goto CRFa1.20.1
 :CRFo1.12.2
+set "STOP_MARKER=minecraft_server.1.12.2.jar"
 cd server
 start "tmp" java !JVM_ARGS! -jar minecraft_server.1.12.2.jar nogui
 timeout /t 5 /nobreak
@@ -325,6 +415,7 @@ echo exit
 ) > server\run.bat
 goto fullload2
 :CRFo1.16.5
+set "STOP_MARKER=minecraft_server.1.16.5.jar"
 cd server
 start "tmp" java !JVM_ARGS! -jar minecraft_server.1.16.5.jar nogui
 timeout /t 5 /nobreak
@@ -340,6 +431,7 @@ echo exit
 ) > server\run.bat
 goto fullload2
 :CRFo1.20.1
+set "STOP_MARKER=forge/1.20.1-47.4.10/win_args.txt"
 cd server
 start "tmp" run.bat
 timeout /t 5 /nobreak
@@ -350,8 +442,9 @@ timeout /t 2 /nobreak
 echo eula=true> server\eula.txt
 goto fullload2
 :CRFa1.16.5
+set "STOP_MARKER=.fabric/server/1.16.5-server.jar"
 cd server
-start "tmp" java !JVM_ARGS! -jar minecraft_server.1.16.5.jar nogui
+start "tmp" java !JVM_ARGS! -jar .fabric/server/1.16.5-server.jar nogui
 timeout /t 5 /nobreak
 cd ..
 echo eula=true> server\eula.txt
@@ -360,11 +453,12 @@ echo eula=true> server\eula.txt
 (
 echo title MCServer
 echo setlocal enabledelayedexpansion
-echo java !JVM_ARGS! -jar minecraft_server.1.16.5.jar nogui
+echo java !JVM_ARGS! -jar .fabric/server/1.16.5-server.jar nogui
 echo exit
 ) > server\run.bat
 goto fullload2
 :CRFa1.20.1
+set "STOP_MARKER=server.jar"
 cd server
 start "tmp" java !JVM_ARGS! -jar server.jar nogui
 timeout /t 5 /nobreak
@@ -380,18 +474,27 @@ echo exit
 ) > server\run.bat
 goto fullload2
 :fullload2
-echo setlocal enabledelayedexpansion > server\stop.bat
-echo taskkill /FI "WINDOWTITLE eq MCServer" /T /F >> server\stop.bat
-echo exit >> server\stop.bat
+if /I "!VERSION!"=="forge-1.20.1" (
+timeout /t 5 /nobreak
+powershell -NoProfile -Command "$marker='!STOP_MARKER!'; $found=$false; foreach ($p in (Get-CimInstance -ClassName Win32_Process)) { if ($p.Name -eq 'java.exe' -and $p.CommandLine -like ('*' + $marker + '*')) { $found=$true; ^& taskkill.exe /PID $p.ProcessId /T /F; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } }; if (-not $found) { Write-Host 'No matching Minecraft server process found.'; exit 1 }"
+(
+echo setlocal enabledelayedexpansion
+echo title MCServer
+echo java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.4.10/win_args.txt nogui %*
+echo exit
+) > server\run.bat
+)
+(
+echo powershell -NoProfile -Command "$marker='!STOP_MARKER!'; $found=$false; foreach ($p in (Get-CimInstance -ClassName Win32_Process)) { if ($p.Name -eq 'java.exe' -and $p.CommandLine -like ('*' + $marker + '*')) { $found=$true; ^& taskkill.exe /PID $p.ProcessId /T /F; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } }; if (-not $found) { Write-Host 'No matching Minecraft server process found.'; exit 1 }"
+echo exit
+) > server\stop.bat
 echo setlocal enabledelayedexpansion > server\restart.bat
 echo start "tmp" stop.bat >> server\restart.bat
 echo timeout /t 2 /nobreak >> server\restart.bat
 echo start "MCServer" run.bat >> server\restart.bat
 echo exit >> server\restart.bat
-taskkill /FI "WINDOWTITLE eq tmp" /T /F
 timeout /t 2 /nobreak
 cd server
 start "MCServer" run.bat
 cd ..
 goto 2
-

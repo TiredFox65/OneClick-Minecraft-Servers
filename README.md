@@ -34,16 +34,16 @@ To completely uninstall, stop the server and delete the installation directory.
 ### Weird Red Error Texts or Crashes in Main.bat, Check the Following:
 
 1. **Do you have Java Installed?**
-   - Make Sure you have the correct Java installed and set as your Java Home.(everything older than 1.16.5 needs Java 8, newer MC versions work with Java 17.)
+   - Make Sure you have the correct Java installed and set as your Java Home.(we recommend java jdk-25)
 
 2. **Are you using the correct Operating System?**
-   - Make Sure you are using Explicitly Windows 10 or Windows 11 because this program was Specifically designed for this.
+   - Make Sure you are using Explicitly Windows 10 or Windows 11 because this program was Specifically designed for it.
 
 3. **Do you have Permission Errors?**
    - Make Sure your User Account has File Priviliges, if not, try running it with Administrator.(does not Guarantee to work)
 
 4. **Your Problem is not Listed?**
-   - Make Sure to write it down with as much info as possible in the GitHub.
+   - Make Sure to Report it with as much info as possible in the GitHub.
 
 ---
 
@@ -55,8 +55,8 @@ To completely uninstall, stop the server and delete the installation directory.
 2. **Have You Tried Restarting?**
    - Close "Main.bat" and reopen it to see if the issue resolves.
 
-3. **Do You Have at Least 1GB of Available RAM?**
-   - Ensure you meet the minimum RAM requirements for smooth operation.
+3. **Do You Have at Least 2GB of Available RAM?**
+   - Ensure you meet the minimum RAM requirements.
 
 ---
 
@@ -77,17 +77,21 @@ If the server doesn’t show up automatically, try connecting using one of the f
 - localhost:25565
 - <YourIPAddress>:25565
 
+Replace "<YourIPAddress>" with your actual IP Adress.
+To check your IP, you can just use: powershell -NoProfile "(ipconfig | findstr IPv4)[0] -replace '.*: |\(.*',''"
+
 ---
 
 ### Want to Play Online, Not Just LAN?
 
 #### **Option 1: Share Your IP Address**
-1. Share your **IP address** with your friends (not recommended unless you trust them).
-2. Ensure your firewall allows access to the server (you may need to configure your firewall).
+1. Share your **Public IP address** with your friends (not recommended unless you trust them).
+2. Ensure your firewall allows access to the server (you may need to configure your firewall, make sure port 25565 is allowed both ways).
 
 #### **Option 2: Use "Hamachi" to Create a VPN Connection**
 1. Download and install **Hamachi** (third-party software) to create a virtual private network.
 2. Have your friends join your network/session via Hamachi.
+3. Then play via the IP Hamachi gave you(host).
 
 #### **Option 3: Host a Server with a Domain**
 1. Purchase a domain online (many providers offer this service).
@@ -97,6 +101,5 @@ If the server doesn’t show up automatically, try connecting using one of the f
 ---
 
 ### Notes:
-- Always back up your server files before making significant changes.
+- Always back up your server files before making significant changes(main.bat has an integrated backup tool).
 - Consult the official Minecraft documentation or mod guides for additional help with specific mods or configurations.
-- Please Always change the Rcon password in the Settings menu.
