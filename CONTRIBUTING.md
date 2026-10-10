@@ -32,7 +32,7 @@ For security issues, follow the private reporting instructions in
    otherwise.
 4. Update relevant user-facing documentation when behavior or instructions
    change.
-5. Test the affected behavior, then open a pull request describing the
+5. Test the affected behavior via `debug.bat`, then open a pull request describing the
    motivation, the changes, and how you tested them. Link any related issue.
 
 ## Testing
