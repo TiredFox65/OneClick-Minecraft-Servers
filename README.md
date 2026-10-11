@@ -123,6 +123,11 @@ Use a public IP or VPN solution for online hosting with friends.
 - For mod-specific issues, consult the official Minecraft or mod documentation.
 - If you discover a bug or missing feature, open an issue with as much detail as possible.
 
+## Acknowledgements
+
+- Thanks to PostHog for Helping with Surveys
+- Thanks to GitHub for Helping with Distributing
+
 ## License
 
 This project is licensed under the MIT License.

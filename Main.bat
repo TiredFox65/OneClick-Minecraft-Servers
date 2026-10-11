@@ -1,10 +1,88 @@
 @echo off
 setlocal EnableDelayedExpansion
-set "VVERSION=4.0"
+:data_section
+set "VVERSION=4.5"
 set "MCVERSIONS=Vanilla-26.3 Paper-26.2 Forge-1.7.10 Forge-1.8.9 Forge-1.12.2 Forge-1.16.5 Forge-1.18.2 Forge-1.19.2 Forge-1.20.1 Forge-1.20.2 Forge-1.20.4 Forge-1.21.1 Forge-1.21.4 Fabric-1.14.4 Fabric-1.15.2 Fabric-1.16.5 Fabric-1.18.2 Fabric-1.19.2 Fabric-1.20.1 Fabric-1.20.4 Fabric-1.21.1 Fabric-1.21.4"
+set "POSTHOG_TOKEN=phc_xZVyhcVfygxCuL33FjfGY8hDXZrhKqZvjbR6MwydmkdQ"
+set "TELEMETRY_QUEUE=%~dp0Telemetry.que"
+:check_debug
+for %%A in ("%~dp0.") do if /I "%%~nxA"=="debug" (
+set "debugmode=1"
+)
+:init
+if not exist "config" (
+for /f %%i in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString()"') do set "UUID=%%i"
+call :writeconfig uuid "!UUID!"
+call :writeconfig contrib-mode "false"
+call :writeconfig survey "true"
+set "firstinit=true"
+)
+goto :boot
+:writeconfig
+set "CONFIG_KEY=%~1"
+set "CONFIG_VALUE=%~2"
+set "CONFIG_FOUND="
+if not exist "config" type nul > "config"
+(
+for /f "usebackq tokens=1,* delims==" %%A in ("config") do (
+if /I "%%A"=="%CONFIG_KEY%" (
+echo %CONFIG_KEY%=%CONFIG_VALUE%
+set "CONFIG_FOUND=1"
+) else (
+echo %%A=%%B
+)
+)
+) > "config.tmp"
+if not "!CONFIG_FOUND!"=="1" echo %CONFIG_KEY%=%CONFIG_VALUE%>>"config.tmp"
+move /y "config.tmp" "config" >nul
+if not errorlevel 1 set "!CONFIG_KEY!=!CONFIG_VALUE!"
+exit /b
+:report
+rem call :report EVENT [MCVERSION] [SERVER_TYPE] [RAMS] [RAMX] [DEFAULT] [REQUESTED]
+if /I not "!survey!"=="true" goto report_clear
+if /I "!contrib-mode!"=="true" goto report_clear
+if /I "!debugmode!"=="1" goto report_clear
+if /I "!TELEMETRY_OPERATION_SUPPRESSED!"=="1" exit /b 0
+if not defined UUID exit /b 0
+if not defined POSTHOG_TOKEN exit /b 0
+set "REPORT_EVENT=%~1"
+set "REPORT_MCVERSION=%~2"
+set "REPORT_SERVER_TYPE=%~3"
+set "REPORT_RAMS=%~4"
+set "REPORT_RAMX=%~5"
+set "REPORT_DEFAULT=%~6"
+set "REPORT_REQUESTED=%~7"
+set "REPORT_UUID=!UUID!"
+set "REPORT_VERSION=!VVERSION!"
+if not defined REPORT_EVENT exit /b 1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop';$queue=$env:TELEMETRY_QUEUE;$token=$env:POSTHOG_TOKEN;$eventName=$env:REPORT_EVENT;if($eventName -notin @('api_get','api_server_created','contribution_mode_entered','contribution_mode_left','first_open','ram_selected','script_opened','server_created')){throw 'Unsupported event'};$mutex=[Threading.Mutex]::new($false,'Local\OneClickMinecraftTelemetryQueue');$locked=$false;$stored=$false;try {try {$locked=$mutex.WaitOne(3000)} catch [Threading.AbandonedMutexException] {$locked=$true};if(-not $locked){throw 'Queue lock timeout'};$timestamp=[DateTime]::UtcNow.ToString('o');$insertId=[Guid]::NewGuid().ToString();$p=@{UUID=$env:REPORT_UUID;AppVersion=$env:REPORT_VERSION;timestamp=$timestamp};$p['$insert_id']=$insertId;switch($eventName){'api_get' {if([string]::IsNullOrWhiteSpace($env:REPORT_REQUESTED)){throw 'Missing Requested'};$p.Requested=[string]$env:REPORT_REQUESTED};'ram_selected' {if($env:REPORT_RAMS -notmatch '^\d+$' -or $env:REPORT_RAMX -notmatch '^\d+$'){throw 'Invalid RAM'};$p.Default=($env:REPORT_DEFAULT -eq 'true');$p.RAMS=[int]$env:REPORT_RAMS;$p.RAMX=[int]$env:REPORT_RAMX};'server_created' {if([string]::IsNullOrWhiteSpace($env:REPORT_MCVERSION) -or [string]::IsNullOrWhiteSpace($env:REPORT_SERVER_TYPE)){throw 'Missing creation properties'};$p.Default=($env:REPORT_DEFAULT -eq 'true');$p.MCVersion=$env:REPORT_MCVERSION;$p.Type=$env:REPORT_SERVER_TYPE;if($env:REPORT_RAMS){$p.RAMS=[int]$env:REPORT_RAMS};if($env:REPORT_RAMX){$p.RAMX=[int]$env:REPORT_RAMX}};'api_server_created' {if([string]::IsNullOrWhiteSpace($env:REPORT_MCVERSION) -or [string]::IsNullOrWhiteSpace($env:REPORT_SERVER_TYPE)){throw 'Missing creation properties'};$p.Default=($env:REPORT_DEFAULT -eq 'true');$p.MCVersion=$env:REPORT_MCVERSION;$p.Type=$env:REPORT_SERVER_TYPE;if($env:REPORT_RAMS){$p.RAMS=[int]$env:REPORT_RAMS};if($env:REPORT_RAMX){$p.RAMX=[int]$env:REPORT_RAMX}}};$record=@{event=$eventName;distinct_id=$env:REPORT_UUID;properties=$p;timestamp=$timestamp};$json=$record | ConvertTo-Json -Depth 8 -Compress;$utf8=[Text.UTF8Encoding]::new($false);$bytes=$utf8.GetBytes($json+[Environment]::NewLine);$stream=[IO.File]::Open($queue,[IO.FileMode]::Append,[IO.FileAccess]::Write,[IO.FileShare]::None);try {$stream.Write($bytes,0,$bytes.Length);$stream.Flush($true)} finally {$stream.Dispose()};$stored=$true;$lines=@([IO.File]::ReadAllLines($queue));$totalBytes=0;foreach($item in $lines){$totalBytes+=$utf8.GetByteCount($item)+1};while($lines.Count -gt 500 -or $totalBytes -gt 1048576){$totalBytes-=$utf8.GetByteCount($lines[0])+1;$lines=@($lines | Select-Object -Skip 1)};function Write-QueueAtomic($path,$items,$encoding){$tmp=$path+'.tmp';$backup=$path+'.bak';[IO.File]::WriteAllLines($tmp,[string[]]$items,$encoding);if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue;[IO.File]::Replace($tmp,$path,$backup);Remove-Item -LiteralPath $backup -Force -ErrorAction SilentlyContinue}else{[IO.File]::Move($tmp,$path)}};Write-QueueAtomic $queue $lines $utf8;$remaining=New-Object 'System.Collections.Generic.List[string]';$deadline=[DateTime]::UtcNow.AddSeconds(4);for($i=0;$i -lt $lines.Count;$i++){$line=$lines[$i];if([DateTime]::UtcNow -ge $deadline){for($j=$i;$j -lt $lines.Count;$j++){$remaining.Add($lines[$j])};break};try {$e=$line | ConvertFrom-Json;if(-not $e.distinct_id -or -not $e.timestamp -or -not $e.properties.UUID -or -not $e.properties.AppVersion -or -not $e.properties.timestamp -or -not $e.properties.'$insert_id'){continue};$payload=@{api_key=$token;event=$e.event;distinct_id=$e.distinct_id;properties=$e.properties;timestamp=$e.timestamp} | ConvertTo-Json -Depth 8 -Compress;$response=Invoke-WebRequest -Uri 'https://eu.i.posthog.com/i/v0/e/' -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 2 -UseBasicParsing;$ack=$response.Content | ConvertFrom-Json;if([int]$response.StatusCode -ne 200 -or $ack.status -ne 'Ok'){throw 'PostHog did not acknowledge the event'}}catch {for($j=$i;$j -lt $lines.Count;$j++){$remaining.Add($lines[$j])};break}};if($remaining.Count -eq 0){Remove-Item -LiteralPath $queue -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath ($queue+'.tmp') -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath ($queue+'.bak') -Force -ErrorAction SilentlyContinue}else{$remainingArray=$remaining.ToArray();Write-QueueAtomic $queue $remainingArray $utf8}} catch {} finally {if($locked){try {$mutex.ReleaseMutex()} catch {}};try {$mutex.Dispose()} catch {}};if($stored){exit 0};exit 1" >nul 2>&1
+if errorlevel 1 exit /b 1
+exit /b 0
+:report_clear
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$queue=$env:TELEMETRY_QUEUE;$mutex=[Threading.Mutex]::new($false,'Local\OneClickMinecraftTelemetryQueue');$locked=$false;try {try {$locked=$mutex.WaitOne(8000)} catch [Threading.AbandonedMutexException] {$locked=$true};if($locked){Remove-Item -LiteralPath $queue -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath ($queue+'.tmp') -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath ($queue+'.bak') -Force -ErrorAction SilentlyContinue}} catch {} finally {if($locked){try {$mutex.ReleaseMutex()} catch {}};try {$mutex.Dispose()} catch {}}" >nul 2>&1
+exit /b 0
+:telemetry_cleanup
+if /I not "!survey!"=="true" goto report_clear
+if /I "!contrib-mode!"=="true" goto report_clear
+if /I "!debugmode!"=="1" goto report_clear
+exit /b 0
+:boot
+:survey
+if not "%debugmode%"=="1" goto readconfig
+if "%firstinit%"=="true" goto survey-firstinit
+goto readconfig
+:survey-firstinit
+set "firstinit=false"
+goto survey
+:readconfig
+for /f "usebackq tokens=1,* delims==" %%A in ("config") do (
+set "%%A=%%B"
+)
+call :telemetry_cleanup
+:bootload
 for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
 if /I "%~1"=="api" goto API
-goto startup
+goto interactive_launch
 :API
 set "API=1"
 if /I "%2"=="--create" goto API_CREATE
@@ -19,6 +97,7 @@ echo %ESC%[31mERROR: Unknown command "%~2" ^(Try "-h" or "--help"^)%ESC%[0m
 exit /b 2
 :API_GET
 for %%V in (!%~3!) do echo %%V
+call :report api_get "" "" "" "" "" "%~3"
 exit /b 0
 :API_VERSION
 echo %VVERSION%
@@ -29,9 +108,11 @@ echo List of Possible API Instructions:
 echo "--help" Displays this Help or Further Explains usage of a command.
 echo "--create" Autonomously Creates a Server.
 echo "--get" Returns the Requested Variable.
+echo "--version" Returns the App Version.
 echo "-h" Alias of "--help"
 echo "-c" Alias of "--create"
 echo "-g" Alias of "--get"
+echo "-v" Alias of "--version"
 exit /b 0
 )
 if /I "%~3"=="help" echo Nice try. & exit /b 0
@@ -46,11 +127,19 @@ if /I "%~3"=="get" goto apihelpget
 if /I "%~3"=="--get" goto apihelpget
 if "%~3"=="g" goto apihelpget
 if "%~3"=="-g" goto apihelpget
-echo %ESC%[31mERROR: Unknown command "%~2" ^(Try "-h" or "--help"^)%ESC%[0m
+echo %ESC%[31mERROR: Unknown command "%~3" ^(Try "-h" or "--help"^)%ESC%[0m
 exit /b 2
+:apihelpget
+echo Usage:
+echo Main.bat -g <Variable>
+exit /b 0
 :apihelpcreate
 echo Usage:
-echo Main.bat -c <MCVersion>
+echo Main.bat -c <MCVersion> -s
+echo <MCVersion> must be in the Form of <Type>-<Version>
+echo the "-s" parameter makes the install not report any survey data.
+echo Example:
+echo Main.bat -c Forge-1.16.5
 exit /b 0
 :API_CREATE
 if /I "%3"=="help" goto help2
@@ -58,7 +147,16 @@ if "%3"=="h" goto help2
 if /I "%3"=="--help" goto help2
 if "%3"=="-h" goto help2
 set "VERSION=%~3"
+if "%4"=="-s" set "secret=1"
+if /I "%4"=="--secret" set "secret=1"
+if "!secret!"=="1" set "TELEMETRY_OPERATION_SUPPRESSED=1"
 goto 1
+:interactive_launch
+call :report script_opened
+if /I not "!first-open!"=="!UUID!" if /I "!survey!"=="true" if /I not "!contrib-mode!"=="true" if /I not "!debugmode!"=="1" (
+call :report first_open
+if not errorlevel 1 call :writeconfig first-open "!UUID!"
+)
 :startup
 cls
 title OneClick Minecraft Servers
@@ -109,7 +207,7 @@ if not exist "uninstall.bat" (
 >"uninstall.bat" (
 echo @echo off
 echo if /I "%%~1"=="-f" goto yes
-echo powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $result = [System.Windows.Forms.MessageBox]::Show('Do you really want to Uninstall? This will delete all server files, backups and uninstall the application.', 'Uninstall OneClick-Minecraft-Servers', 'YesNo', 'Question'); if ($result -eq 'Yes') { exit 0 } else { exit 1 }"
+echo powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $result = [System.Windows.Forms.MessageBox]::Show('Do you really want to Uninstall? This will delete all server files, backups and uninstall the application.(it will Delete All Contents in the Current Directory)', 'Uninstall OneClick-Minecraft-Servers', 'YesNo', 'Question'); if ($result -eq 'Yes') { exit 0 } else { exit 1 }"
 echo if errorlevel 1 exit /b 0
 echo :yes
 echo set "TARGET=%%~dp0"
@@ -400,6 +498,10 @@ goto 2
 echo List of Possible Instructions:
 echo Help, Shows this help.
 echo Ram, Lets you set the RAM Ammount for the Server.
+echo OpenConfig, Opens the Config File^(Do not Touch unless you know what you are doing^)
+echo NoSurvey, Disables Survey Data being Reported to the Creator. ^(Please dont, it helps with Development^)
+echo Contributor, 
+echo UUID, Displays your UUID.
 echo Back, goes back.
 goto settings
 :Ver
@@ -411,9 +513,39 @@ goto 2
 set /p "MODE1=Enter Settings> "
 if /I "!MODE1!"=="help" goto help3
 if /I "!MODE1!"=="ram" goto setram
+if /I "!MODE1!"=="openconfig" start "" config && goto settings
+if /I "!MODE1!"=="uuid" echo !UUID! && goto settings
+if /I "!MODE1!"=="nosurvey" goto stop_survey
+if /I "!MODE1!"=="contributor" goto contributor
 if /I "!MODE1!"=="clear" goto cls2
 if /I "!MODE1!"=="back" goto 2
 echo Syntax Error (try "Help")
+goto settings
+:stop_survey
+set /p "SSC=Are you sure you want to stop reporting survey data to the Creator?(y/n)> "
+if /I "!SSC!"=="n" goto settings
+if /I "!SSC!"=="y" goto nulsurvey
+echo %ESC%[33mSyntax Error: Assuming NO...%ESC%[0m
+goto settings
+:nulsurvey
+echo %ESC%[31mDISABLED: Survey Reporting%ESC%[0m
+call :writeconfig survey "false"
+set "survey=false"
+call :report_clear
+goto boot
+:contributor
+if /I "!contrib-mode!"=="true" goto contributor_left
+if /I "!survey!"=="true" if /I not "!debugmode!"=="1" call :report contribution_mode_entered
+call :writeconfig contrib-mode "true"
+set "contrib-mode=true"
+call :report_clear
+echo Contribution mode enabled.
+goto settings
+:contributor_left
+call :writeconfig contrib-mode "false"
+set "contrib-mode=false"
+if /I "!survey!"=="true" if /I not "!debugmode!"=="1" call :report contribution_mode_left
+echo Contribution mode disabled.
 goto settings
 :setram
 set ModsEmpty=1
@@ -485,6 +617,12 @@ goto setram2
 echo -Xms%XMS%G
 echo -Xmx%XMX%G
 ) > server\user_jvm_args.txt
+set "CREATE_RAMS=!XMS!"
+set "CREATE_RAMX=!XMX!"
+set "CREATE_DEFAULT=false"
+set "RAM_SELECTION_PENDING=true"
+set "RAM_SELECTION_REPORTED=true"
+call :report ram_selected "" "" "!CREATE_RAMS!" "!CREATE_RAMX!" "!CREATE_DEFAULT!"
 :create
 if exist "server\*" (
 echo %ESC%[31mWARNING: This Action will Overwrite the Server%ESC%[0m
@@ -725,8 +863,18 @@ del installer.jar
 del server\fabric-server-launch.jar
 goto fullload
 :fullload
-echo -Xmx8G > server\user_jvm_args.txt
-echo -Xms4G >> server\user_jvm_args.txt
+if /I "!RAM_SELECTION_PENDING!"=="true" (
+set "CREATE_DEFAULT=false"
+) else (
+set "CREATE_RAMS=4"
+set "CREATE_RAMX=8"
+set "CREATE_DEFAULT=true"
+)
+set "RAM_SELECTION_PENDING="
+echo -Xmx!CREATE_RAMX!G > server\user_jvm_args.txt
+echo -Xms!CREATE_RAMS!G >> server\user_jvm_args.txt
+if /I not "!RAM_SELECTION_REPORTED!"=="true" call :report ram_selected "" "" "!CREATE_RAMS!" "!CREATE_RAMX!" "!CREATE_DEFAULT!"
+set "RAM_SELECTION_REPORTED="
 set "JVM_ARGS="
 for /f "usebackq tokens=*" %%A in ("server\user_jvm_args.txt") do (
 if defined JVM_ARGS (
@@ -1035,6 +1183,18 @@ echo exit
 ) > server\run.bat
 goto fullload2
 :fullload2
+set "CREATE_ARTIFACT=!STOP_MARKER!"
+if /I "!VERSION!"=="fabric-1.20.4" set "CREATE_ARTIFACT=.fabric\server\1.20.4-server.jar"
+if /I "!VERSION!"=="fabric-1.21.1" set "CREATE_ARTIFACT=.fabric\server\1.21.1-server.jar"
+if /I "!VERSION!"=="fabric-1.21.4" set "CREATE_ARTIFACT=.fabric\server\1.21.4-server.jar"
+for /f "tokens=1,* delims=-" %%A in ("!VERSION!") do (
+set "CREATE_TYPE=%%A"
+set "CREATE_MCVERSION=%%B"
+)
+if /I "!CREATE_TYPE!"=="vanilla" set "CREATE_TYPE=Vanilla"
+if /I "!CREATE_TYPE!"=="paper" set "CREATE_TYPE=Paper"
+if /I "!CREATE_TYPE!"=="forge" set "CREATE_TYPE=Forge"
+if /I "!CREATE_TYPE!"=="fabric" set "CREATE_TYPE=Fabric"
 powershell -NoProfile -Command "$marker='!STOP_MARKER!'; $found=$false; foreach ($p in (Get-CimInstance -ClassName Win32_Process)) { if ($p.Name -eq 'java.exe' -and $p.CommandLine -like ('*' + $marker + '*')) { $found=$true; ^& taskkill.exe /PID $p.ProcessId /T /F; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } }; if (-not $found) { Write-Host 'No matching Minecraft server process found.'; exit 1 }"
 if /I "!VERSION!"=="vanilla-26.3" set "strun=java @user_jvm_args.txt -jar server.jar nogui %%*"
 if /I "!VERSION!"=="paper-26.2" set "strun=java @user_jvm_args.txt -jar server.jar nogui %%*"
@@ -1069,10 +1229,19 @@ echo start "tmp" stop.bat >> server\restart.bat
 echo timeout /t 2 /nobreak >> server\restart.bat
 echo start "MCServer" start.bat >> server\restart.bat
 echo exit >> server\restart.bat
+set "CREATE_SUCCESS=false"
+if exist "server\!CREATE_ARTIFACT!" if exist "server\run.bat" if exist "server\eula.txt" set "CREATE_SUCCESS=true"
 timeout /t 2 /nobreak
 cd server
 start "MCServer" run.bat
 cd ..
+if /I "!CREATE_SUCCESS!"=="true" (
+if /I "!API!"=="1" (
+call :report api_server_created "!CREATE_MCVERSION!" "!CREATE_TYPE!" "!CREATE_RAMS!" "!CREATE_RAMX!" "!CREATE_DEFAULT!"
+) else (
+call :report server_created "!CREATE_MCVERSION!" "!CREATE_TYPE!" "!CREATE_RAMS!" "!CREATE_RAMX!" "!CREATE_DEFAULT!"
+)
+)
 if "%API%"=="1" exit /b 2
 goto 2
 :oobe

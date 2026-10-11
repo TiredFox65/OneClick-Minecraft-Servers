@@ -1,6 +1,6 @@
 @echo off
 if /I "%~1"=="-f" goto yes
-powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $result = [System.Windows.Forms.MessageBox]::Show('Do you really want to Uninstall? This will delete all server files, backups and uninstall the application.', 'Uninstall OneClick-Minecraft-Servers', 'YesNo', 'Question'); if ($result -eq 'Yes') { exit 0 } else { exit 1 }"
+powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $result = [System.Windows.Forms.MessageBox]::Show('Do you really want to Uninstall? This will delete all server files, backups and uninstall the application.(it will Delete All Contents in the Current Directory)', 'Uninstall OneClick-Minecraft-Servers', 'YesNo', 'Question'); if ($result -eq 'Yes') { exit 0 } else { exit 1 }"
 if errorlevel 1 exit /b 0
 :yes
 set "TARGET=%~dp0"
