@@ -1,105 +1,128 @@
 # OneClick-Minecraft-Servers
 
-### Easy Setup
+A simple Windows batch-based Minecraft server installer for creating and managing servers with a few guided commands.
 
-1. Download Main.bat File.
+## Features
 
-2. Create a new Directory for your server and add Main.bat.
+- Create new Minecraft servers with a single command
+- Supports multiple server types and versions
+- Built-in status, start, stop, restart, and backup controls
+- Update checking against the latest GitHub release
+- Java detection and optional Java install flow
+- Uninstall flow with confirmation and cleanup
+- API-style commands for automation and scripting
 
-3. Execute Main.bat and Have fun exploring.(use "help" for syntax)
+## Supported Versions
 
----
+The installer supports the following versions:
+
+- Vanilla: 26.3
+- Paper: 26.2
+- Forge: 1.7.10, 1.8.9, 1.12.2, 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.20.2, 1.20.4, 1.21.1, 1.21.4
+- Fabric: 1.14.4, 1.15.2, 1.16.5, 1.18.2, 1.19.2, 1.20.1, 1.20.4, 1.21.1, 1.21.4
+
+## Requirements
+
+- Windows 10 or Windows 11
+- Java installed and available in PATH
+- Internet access for downloading server files and updates
+- At least 4 GB of RAM recommended for normal use
+
+## Quick Start
+
+1. Download `Main.bat`.
+2. Place it in a new folder that will hold your Minecraft server files.
+3. Run `Main.bat`.
+4. Use `help` to see the available commands.
+
+## Main Commands
+
+The interactive menu accepts commands such as:
+
+- `help` - show available commands
+- `Create` - create or overwrite the current server
+- `Settings` - configure RAM values
+- `Start` - start the server
+- `Stop` - force-stop the server
+- `Restart` - restart the server
+- `Status` - check whether the server is running
+- `Backups` - create, load, or restore backups
+- `Update` - check for newer releases and update the tool
+- `InstallJava` - install the recommended Java version if needed
+- `Uninstall` - remove the project and server files
+- `Exit` - close the tool
+
+## API Usage
+
+The script also supports a basic API mode for scripted use:
+
+- `Main.bat api --help`
+- `Main.bat api --version`
+- `Main.bat api --create <MCVersion>`
+- `Main.bat api --get <VariableName>`
+
+Example:
+
+```bat
+Main.bat api --create Fabric-1.21.4
+```
+
+## Backup Safety
+
+- Backups should be created while the server is stopped.
+- Restore and load operations can overwrite existing server data.
+- Always keep a backup before making large configuration changes.
 
 ## Safety
 
 This installer only:
 
-- Downloads Minecraft server files from Mojang.
-- Downloads required libraries from Maven repositories.
-- Creates files and folders inside the directory.
-- Generates standard server configuration files.
+- Downloads Minecraft server files from Mojang and supported modded-server sources
+- Downloads required libraries from Maven repositories
+- Creates files and folders inside the selected directory
+- Generates standard server configuration files
 
 This installer does NOT:
 
-- Modify the Windows registry.
-- Install Windows services.
-- Add startup tasks.
-- Change system settings.
-- Collect or transmit user data.
+- Modify the Windows registry
+- Install Windows services
+- Add startup tasks
+- Change system settings outside the generated server files
+- Collect or transmit personal user data
 
-To completely uninstall, stop the server and delete the installation directory.
+To fully remove it, stop the server and delete the installation directory.
 
-## Troubleshooting Guide
+## Troubleshooting
 
-### Weird Red Error Texts or Crashes in Main.bat, Check the Following:
+### Java issues
 
-1. **Do you have Java Installed?**
-   - Make Sure you have the correct Java installed and set as your Java Home.(we recommend java jdk-25)
+- Make sure Java is installed and available in PATH.
+- If Java is missing, use the `InstallJava` command from the main menu.
+- Use Java JDK 25 or a supported equivalent when possible.
 
-2. **Are you using the correct Operating System?**
-   - Make Sure you are using Explicitly Windows 10 or Windows 11 because this program was Specifically designed for it.
+### Internet or download problems
 
-3. **Do you have Permission Errors?**
-   - Make Sure your User Account has File Priviliges, if not, try running it with Administrator.(does not Guarantee to work)
+- Confirm that internet access is available.
+- Check firewall or antivirus software if downloads fail.
+- Retry the operation after restarting the installer.
 
-4. **Your Problem is not Listed?**
-   - Make Sure to Report it with as much info as possible in the GitHub.
+### Server does not appear on the network
 
----
+Use one of these addresses when testing locally:
 
-### If Errors Occur Without Proper Failure Analysis, Check the Following:
+- `127.0.0.1`
+- `127.0.0.1:25565`
+- `localhost:25565`
+- `<YourIPAddress>:25565`
 
-1. **Could It Be a Firewall Issue?**
-   - Ensure that your firewall isn’t blocking the necessary connections.
+Use a public IP or VPN solution for online hosting with friends.
 
-2. **Have You Tried Restarting?**
-   - Close "Main.bat" and reopen it to see if the issue resolves.
+## Notes
 
-3. **Do You Have at Least 2GB of Available RAM?**
-   - Ensure you meet the minimum RAM requirements.
+- Always keep backups before major changes.
+- For mod-specific issues, consult the official Minecraft or mod documentation.
+- If you discover a bug or missing feature, open an issue with as much detail as possible.
 
----
+## License
 
-### If You Are Having Trouble Joining the Server, Check the Following:
-
-1. **Have You Installed All the Required Mods?**
-   - Ensure all client-side and server-side mods are correctly installed.
-
-2. **Are Client-Side Mods on the Server?**
-   - Client-side mods should not be placed in the server directory. Remove them if present.
-
----
-
-### Possible Server Address (If Server Does Not Show Up):
-If the server doesn’t show up automatically, try connecting using one of the following addresses:
-- 127.0.0.1
-- 127.0.0.1:25565
-- localhost:25565
-- <YourIPAddress>:25565
-
-Replace "<YourIPAddress>" with your actual IP Adress.
-To check your IP, you can just use: powershell -NoProfile "(ipconfig | findstr IPv4)[0] -replace '.*: |\(.*',''"
-
----
-
-### Want to Play Online, Not Just LAN?
-
-#### **Option 1: Share Your IP Address**
-1. Share your **Public IP address** with your friends (not recommended unless you trust them).
-2. Ensure your firewall allows access to the server (you may need to configure your firewall, make sure port 25565 is allowed both ways).
-
-#### **Option 2: Use "Hamachi" to Create a VPN Connection**
-1. Download and install **Hamachi** (third-party software) to create a virtual private network.
-2. Have your friends join your network/session via Hamachi.
-3. Then play via the IP Hamachi gave you(host).
-
-#### **Option 3: Host a Server with a Domain**
-1. Purchase a domain online (many providers offer this service).
-2. Edit the "server.properties" file (located in the server folder) with the correct domain information.
-3. Set up your domain to point to your server (search for an online tutorial if needed).
-
----
-
-### Notes:
-- Always back up your server files before making significant changes(main.bat has an integrated backup tool).
-- Consult the official Minecraft documentation or mod guides for additional help with specific mods or configurations.
+This project is licensed under the MIT License.

@@ -1,14 +1,77 @@
 @echo off
+setlocal EnableDelayedExpansion
+set "VVERSION=4.0"
+set "MCVERSIONS=Vanilla-26.3 Paper-26.2 Forge-1.7.10 Forge-1.8.9 Forge-1.12.2 Forge-1.16.5 Forge-1.18.2 Forge-1.19.2 Forge-1.20.1 Forge-1.20.2 Forge-1.20.4 Forge-1.21.1 Forge-1.21.4 Fabric-1.14.4 Fabric-1.15.2 Fabric-1.16.5 Fabric-1.18.2 Fabric-1.19.2 Fabric-1.20.1 Fabric-1.20.4 Fabric-1.21.1 Fabric-1.21.4"
+for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
+if /I "%~1"=="api" goto API
+goto startup
+:API
+set "API=1"
+if /I "%2"=="--create" goto API_CREATE
+if "%2"=="-c" goto API_CREATE
+if /I "%2"=="--help" goto API_HELP
+if "%2"=="-h" goto API_HELP
+if /I "%2"=="--version" goto API_VERSION
+if "%2"=="-v" goto API_VERSION
+if /I "%2"=="--get" goto API_GET
+if "%2"=="-g" goto API_GET
+echo %ESC%[31mERROR: Unknown command "%~2" ^(Try "-h" or "--help"^)%ESC%[0m
+exit /b 2
+:API_GET
+for %%V in (!%~3!) do echo %%V
+exit /b 0
+:API_VERSION
+echo %VVERSION%
+exit /b 0
+:API_HELP
+if "%~3"=="" (
+echo List of Possible API Instructions:
+echo "--help" Displays this Help or Further Explains usage of a command.
+echo "--create" Autonomously Creates a Server.
+echo "--get" Returns the Requested Variable.
+echo "-h" Alias of "--help"
+echo "-c" Alias of "--create"
+echo "-g" Alias of "--get"
+exit /b 0
+)
+if /I "%~3"=="help" echo Nice try. & exit /b 0
+if /I "%~3"=="--help" echo Nice try. & exit /b 0
+if "%~3"=="h" echo Nice try. & exit /b 0
+if "%~3"=="-h" echo Nice try. & exit /b 0
+if /I "%~3"=="create" goto apihelpcreate
+if /I "%~3"=="--create" goto apihelpcreate
+if "%~3"=="c" goto apihelpcreate
+if "%~3"=="-c" goto apihelpcreate
+if /I "%~3"=="get" goto apihelpget
+if /I "%~3"=="--get" goto apihelpget
+if "%~3"=="g" goto apihelpget
+if "%~3"=="-g" goto apihelpget
+echo %ESC%[31mERROR: Unknown command "%~2" ^(Try "-h" or "--help"^)%ESC%[0m
+exit /b 2
+:apihelpcreate
+echo Usage:
+echo Main.bat -c <MCVersion>
+exit /b 0
+:API_CREATE
+if /I "%3"=="help" goto help2
+if "%3"=="h" goto help2
+if /I "%3"=="--help" goto help2
+if "%3"=="-h" goto help2
+set "VERSION=%~3"
+goto 1
 :startup
 cls
-setlocal EnableDelayedExpansion
-set "VVERSION=3.0"
-for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
 title OneClick Minecraft Servers
 :ram_check
 for /f %%A in ('powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB -as [int]"') do set "TotalRAM_GB=%%A"
 if %TotalRAM_GB% LSS 5 (
 echo %ESC%[31mERROR: System RAM below 4GB. WE STRONGLY DISRECOMMEND HOSTING A SERVER ON THIS CRAP.%ESC%[0m
+echo %ESC%[31mPLEASE QUIT WHATEVER YOU THINK YOU ARE DOING!%ESC%[0m
+set /p "RTLQC=Ignore?(y/n)> "
+if /I "!RTLQC!"=="y" goto internet_check
+if /I "!RTLQC!"=="n" exit /b 1
+echo %ESC%[33mSyntax Error: Assuming NO...%ESC%[0m
+exit /b 1
 )
 :internet_check
 set "internet=false"
@@ -27,10 +90,11 @@ if not defined githubversion (
 echo %ESC%[31mERROR: Could not check for updates.%ESC%[0m
 goto java_check
 )
-echo Newest Version: %githubversion%
 if /I not "%githubversion%"=="%VVERSION%" (
+echo %ESC%[33mNewest Version: %githubversion% %ESC%[0m
 echo %ESC%[33mWARNING: A newer version is available. Older versions might not be secure.^(update using "Update"^)%ESC%[0m
 ) else (
+echo %ESC%[32mNewest Version: %githubversion% %ESC%[0m
 echo %ESC%[32mNewest Version is Installed.%ESC%[0m
 )
 :java_check
@@ -44,11 +108,15 @@ java -version >nul 2>&1 && set "installedjava=1" || set "installedjava=0"
 if not exist "uninstall.bat" (
 >"uninstall.bat" (
 echo @echo off
+echo if /I "%%~1"=="-f" goto yes
+echo powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $result = [System.Windows.Forms.MessageBox]::Show('Do you really want to Uninstall? This will delete all server files, backups and uninstall the application.', 'Uninstall OneClick-Minecraft-Servers', 'YesNo', 'Question'); if ($result -eq 'Yes') { exit 0 } else { exit 1 }"
+echo if errorlevel 1 exit /b 0
+echo :yes
 echo set "TARGET=%%~dp0"
 echo set "CLEANER=%%TEMP%%\cleanup_%%RANDOM%%.bat"
 echo ^(
 echo echo @echo off
-echo echo timeout /t 2 /nobreak ^^^>nul
+echo echo timeout /t 2 /nobreak ^>nul
 echo echo rd /s /q "%%TARGET%%"
 echo echo del "%%~f0"
 echo ^) ^> "%%CLEANER%%"
@@ -68,14 +136,14 @@ echo %ESC%[33mTotal system RAM detected: %TotalRAM_GB% GB%ESC%[0m
 ) else if %TotalRAM_GB% GTR 7 (
 echo %ESC%[31mTotal system RAM detected: %TotalRAM_GB% GB ^(Seriously?^)%ESC%[0m
 )
-if installedjava==0 (
+if "!installedjava!"=="0" (
 echo %ESC%[31mJava is NOT installed or not in PATH.%ESC%[0m
 ) else (
 echo %ESC%[32mJava is installed and in PATH.%ESC%[0m
 echo %ESC%[32mJava version: !JAVA_VERSION!%ESC%[0m
 echo %ESC%[32mJava found at: !JAVA_PATH!%ESC%[0m
 )
-if internet=="false" (
+if "!internet!"=="false" (
 echo %ESC%[31mInternet Available: !internet!%ESC%[0m
 ) else (
 echo %ESC%[32mInternet Available: !internet!%ESC%[0m
@@ -85,7 +153,7 @@ set "internet=false"
 ping -n 1 google.com >nul && set "internet=true"
 set /p "MODE=Enter Instructions> "
 if /I "!MODE!"=="help" goto help1
-if /I "!MODE!"=="Create" goto 1
+if /I "!MODE!"=="Create" goto create
 if /I "!MODE!"=="Settings" goto settings
 if /I "!MODE!"=="Status" goto status
 if /I "!MODE!"=="Graphical" goto GBL
@@ -93,6 +161,7 @@ if /I "!MODE!"=="Start" start "MCServer" start.bat && goto 2
 if /I "!MODE!"=="Stop" start "tmp" stop.bat && goto 2
 if /I "!MODE!"=="Restart" start "tmp" server\restart.bat && goto 2
 if /I "!MODE!"=="uninstall" goto uninstall
+if /I "!MODE!"=="installjava" goto installjava
 if /I "!MODE!"=="update" goto update
 if /I "!MODE!"=="reload" goto startup
 if /I "!MODE!"=="Backups" goto backups
@@ -100,6 +169,36 @@ if /I "!MODE!"=="Version" goto Ver
 if /I "!MODE!"=="Exit" exit
 if /I "!MODE!"=="Clear" goto cls1
 echo Syntax Error (try "Help")
+goto 2
+:installjava
+if "!internet!"=="false" (
+echo %ESC%[31mERROR: Cannot Install Java without an Internet connection.%ESC%[0m
+goto 2
+)
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot"
+set "JAVA_EXE=%JAVA_HOME%\bin\java.exe"
+set "INSTALLER=%TEMP%\OpenJDK25U-jdk_x64_windows_hotspot_25.0.2_10.msi"
+set "JAVA_URL=https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.2+10/OpenJDK25U-jdk_x64_windows_hotspot_25.0.2_10.msi"
+if "!JAVA_VERSION!"=="25.0.2" (
+if exist "%JAVA_EXE%" (
+echo %ESC%[32mJava is Already Installed with the Recommended Version%ESC%[0m
+goto 2
+)
+)
+echo Downloading Eclipse Temurin Java JDK 25.0.2+10...
+curl.exe -fL "%JAVA_URL%" -o "%INSTALLER%"
+if not exist "%INSTALLER%" (
+echo %ESC%[31mERROR: Download failed.%ESC%[0m
+goto 2
+)
+echo Installing Java JDK 25...
+msiexec.exe /i "%INSTALLER%" /qn /norestart INSTALLDIR="%JAVA_HOME%"
+del "%INSTALLER%" 2>nul
+if not exist "%JAVA_EXE%" (
+echo %ESC%[31mERROR: Installation failed or the expected path is incorrect.%ESC%[0m
+goto 2
+)
+echo %ESC%[32mJava JDK 25 Installed.%ESC%[0m
 goto 2
 :update
 if "!internet!"=="false" (
@@ -112,7 +211,7 @@ if not defined githubversion (
 echo %ESC%[31mERROR: Could not determine the latest version.%ESC%[0m
 goto 2
 )
-if /I "%VERSION%"=="%githubversion%" (
+if /I "%VVERSION%"=="%githubversion%" (
 echo %ESC%[32mNewest Version Already Installed.%ESC%[0m
 goto 2
 )
@@ -138,7 +237,11 @@ exit
 echo %ESC%[31mWARNING: This will delete all server files, backups and uninstall the application.%ESC%[0m
 set /p "CONFIRMUNINSTALL=Are you sure you want to uninstall?(y/n)> "
 if /I "!CONFIRMUNINSTALL!"=="n" goto 2
-if /I "!CONFIRMUNINSTALL!"=="y" echo Uninstalling... && start "" /b cmd /c ""uninstall.bat"" && exit
+if /I "!CONFIRMUNINSTALL!"=="y" (
+echo Uninstalling...
+start "" /b cmd /c "uninstall.bat -f"
+exit
+)
 echo %ESC%[33mSyntax Error: Assuming NO...%ESC%[0m
 goto 2
 :backups
@@ -287,6 +390,7 @@ echo Restart, Force-restarts the server.^(Use stop in the server console for gra
 echo Status, Shows the current server status.
 echo Backups, Opens the backup menu.
 echo Update, Updates the program.
+echo InstallJava, Auto Installs the Recommended Java Version and sets it as Home^(EXPERIMENTAL^)
 echo Reload, Reloads the startup configuration.
 echo Uninstall, Uninstalls the program.
 echo Clear, Clears the screen.
@@ -381,20 +485,21 @@ goto setram2
 echo -Xms%XMS%G
 echo -Xmx%XMX%G
 ) > server\user_jvm_args.txt
-:1
+:create
 if exist "server\*" (
 echo %ESC%[31mWARNING: This Action will Overwrite the Server%ESC%[0m
 set /p "AOW=Do you want to Overwrite the Server?(y/n)> "
 if /I "!AOW!"=="n" goto 2
-if /I "!AOW!"=="y" goto 3
+if /I "!AOW!"=="y" goto 1
 echo %ESC%[33mSyntax Error: Assuming NO...%ESC%[0m
 goto 2
 )
-:3
+:1
 set "SERVERUP=false"
 tasklist /FI "IMAGENAME eq java.exe" /NH | findstr /I /C:"java.exe" >nul && set "SERVERUP=true"
 if %SERVERUP%==true (
 echo %ESC%[31mERROR: Server can only be Created while Current Server is stopped.%ESC%[0m
+if "%API%"=="1" exit /b 2
 goto 2
 )
 if not exist "server\mods" mkdir server\mods
@@ -412,7 +517,12 @@ rd /s /q "server"
 rd /s /q "mods"
 mkdir "server"
 mkdir "mods"
+if "%API%"=="1" goto apiintcreate
 set /p "VERSION=Enter the version you want to run> "
+:apiintcreate
+set "alr=0"
+:alias
+if /I "!VERSION!"=="vanilla-26.3" goto vanilla26.3
 if /I "!VERSION!"=="forge-1.7.10" goto forge1.7.10
 if /I "!VERSION!"=="forge-1.8.9" goto forge1.8.9
 if /I "!VERSION!"=="forge-1.12.2" goto forge1.12.2
@@ -433,35 +543,54 @@ if /I "!VERSION!"=="fabric-1.20.1" goto fabric1.20.1
 if /I "!VERSION!"=="fabric-1.20.4" goto fabric1.20.4
 if /I "!VERSION!"=="fabric-1.21.1" goto fabric1.21.1
 if /I "!VERSION!"=="fabric-1.21.4" goto fabric1.21.4
+if /I "!VERSION!"=="paper-26.2" goto paper26.2
 if /I "!VERSION!"=="back" goto 2
 if /I "!VERSION!"=="help" goto help2
+set "alr=1"
+for %%V in (!MCVERSIONS!) do (
+for /f "tokens=1,* delims=-" %%A in ("%%V") do (
+set "L=%%A"
+set "F=%%B"
+set "S=%%B"
+if "!F:~0,2!"=="1." set "S=!F:~2!"
+set "P=!L:~0,2!"
+if /I "!VERSION!"=="!L!!F!" set "VERSION=%%V"&goto alias
+if /I "!VERSION!"=="!L! !F!" set "VERSION=%%V"&goto alias
+if /I "!VERSION!"=="!L! !S!" set "VERSION=%%V"&goto alias
+if /I "!VERSION!"=="!L!!S!" set "VERSION=%%V"&goto alias
+if /I "!VERSION!"=="!L!-!S!" set "VERSION=%%V"&goto alias
+if /I "!VERSION!"=="!P!!F!" set "VERSION=%%V"&goto alias
+if /I "!VERSION!"=="!P!!S!" set "VERSION=%%V"&goto alias
+)
+)
 echo Version not found! (try "Help")
-goto 3
+if "%API%"=="1" exit /b 2
+goto 2
 :help2
+if "%API%"=="1" (
+echo List of MCVersions:
+) else (
 echo List of Possible Entries:
-echo Forge-1.7.10
-echo Forge-1.8.9
-echo Forge-1.12.2
-echo Forge-1.16.5
-echo Forge-1.18.2
-echo Forge-1.19.2
-echo Forge-1.20.1
-echo Forge-1.20.2
-echo Forge-1.20.4
-echo Forge-1.21.1
-echo Forge-1.21.4
-echo Fabric-1.14.4
-echo Fabric-1.15.2
-echo Fabric-1.16.5
-echo Fabric-1.18.2
-echo Fabric-1.19.2
-echo Fabric-1.20.1
-echo Fabric-1.20.4
-echo Fabric-1.21.1
-echo Fabric-1.21.4
+)
+for %%V in (!MCVERSIONS!) do echo %%V
+if "%API%"=="1" exit /b 0
 echo Help, shows this help.
 echo Back, goes back.
-goto 3
+goto create
+:paper26.2
+echo Loading Paper 26.2...
+cd server
+curl https://fill-data.papermc.io/v1/objects/bf1dcf627364f8a631ab15250d240eb5a8e89faaac523b391e1c61367fce9ff1/paper-26.2-133.jar -o server.jar
+java -jar server.jar nogui
+cd ..
+goto fullload
+:vanilla26.3
+echo Loading Vanilla 26.3...
+cd server
+curl https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar -o server.jar
+java -jar server.jar nogui
+cd ..
+goto fullload
 :forge1.7.10
 echo Loading Forge 1.7.10...
 cd server
@@ -608,6 +737,8 @@ set "JVM_ARGS=%%A")
 echo Creation in Progress...
 for /f %%A in ('powershell -Command "(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB -as [int]"') do set TotalRAM_GB=%%A
 echo Total system RAM detected: %TotalRAM_GB% GB
+if /I "!VERSION!"=="vanilla-26.3" goto CRVa26.3
+if /I "!VERSION!"=="paper-26.2" goto CRPa26.2
 if /I "!VERSION!"=="forge-1.7.10" goto CRFo1.7.10
 if /I "!VERSION!"=="forge-1.8.9" goto CRFo1.8.9
 if /I "!VERSION!"=="forge-1.12.2" goto CRFo1.12.2
@@ -626,6 +757,28 @@ if /I "!VERSION!"=="fabric-1.20.1" goto CRFa1.20.1
 if /I "!VERSION!"=="fabric-1.20.4" goto CRFa1.20.4
 if /I "!VERSION!"=="fabric-1.21.1" goto CRFa1.21.1
 if /I "!VERSION!"=="fabric-1.21.4" goto CRFa1.21.4
+:CRPa26.2
+set "STOP_MARKER=server.jar"
+echo eula=true> server\eula.txt
+(
+echo title MCServer
+echo setlocal enabledelayedexpansion
+echo java !JVM_ARGS! -jar server.jar nogui
+echo exit
+) > server\run.bat
+goto fullload2
+:CRVa26.3
+set "STOP_MARKER=server.jar"
+echo eula=true> server\eula.txt
+timeout /t 2 /nobreak
+echo eula=true> server\eula.txt
+(
+echo title MCServer
+echo setlocal enabledelayedexpansion
+echo java !JVM_ARGS! -jar server.jar nogui
+echo exit
+) > server\run.bat
+goto fullload2
 :CRFo1.7.10
 set "STOP_MARKER=minecraft_server.1.7.10.jar"
 echo eula=true> server\eula.txt
@@ -813,7 +966,7 @@ echo eula=true> server\eula.txt
 (
 echo title MCServer
 echo setlocal enabledelayedexpansion
-echo java !JVM_ARGS! -jar .fabric/server/1.19.2-server nogui
+echo java !JVM_ARGS! -jar .fabric/server/1.19.2-server.jar nogui
 echo exit
 ) > server\run.bat
 goto fullload2
@@ -883,6 +1036,8 @@ echo exit
 goto fullload2
 :fullload2
 powershell -NoProfile -Command "$marker='!STOP_MARKER!'; $found=$false; foreach ($p in (Get-CimInstance -ClassName Win32_Process)) { if ($p.Name -eq 'java.exe' -and $p.CommandLine -like ('*' + $marker + '*')) { $found=$true; ^& taskkill.exe /PID $p.ProcessId /T /F; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } } }; if (-not $found) { Write-Host 'No matching Minecraft server process found.'; exit 1 }"
+if /I "!VERSION!"=="vanilla-26.3" set "strun=java @user_jvm_args.txt -jar server.jar nogui %%*"
+if /I "!VERSION!"=="paper-26.2" set "strun=java @user_jvm_args.txt -jar server.jar nogui %%*"
 if /I "!VERSION!"=="forge-1.18.2" set "strun=java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.18.2-40.3.0/win_args.txt nogui %%*"
 if /I "!VERSION!"=="forge-1.19.2" set "strun=java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.19.2-43.5.0/win_args.txt nogui %%*"
 if /I "!VERSION!"=="forge-1.20.1" set "strun=java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.1-47.4.10/win_args.txt nogui %%*"
@@ -890,6 +1045,7 @@ if /I "!VERSION!"=="forge-1.20.2" set "strun=java @user_jvm_args.txt @libraries/
 if /I "!VERSION!"=="forge-1.20.4" set "strun=java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.20.4-49.2.0/win_args.txt nogui %%*"
 if /I "!VERSION!"=="forge-1.21.1" set "strun=java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.21.1-52.1.0/win_args.txt nogui %%*"
 if /I "!VERSION!"=="forge-1.21.4" set "strun=java @user_jvm_args.txt @libraries/net/minecraftforge/forge/1.21.4-54.1.14/win_args.txt nogui %%*"
+if /I "!VERSION!"=="forge-1.16.5" set "strun=java @user_jvm_args.txt -jar minecraft_server.1.16.5.jar nogui %%*"
 if /I "!VERSION!"=="fabric-1.14.4" set "strun=java @user_jvm_args.txt -jar server.jar nogui %%*"
 if /I "!VERSION!"=="fabric-1.15.2" set "strun=java @user_jvm_args.txt -jar server.jar nogui %%*"
 if /I "!VERSION!"=="fabric-1.19.2" set "strun=java @user_jvm_args.txt -jar .fabric/server/1.19.2-server.jar nogui %%*"
@@ -917,4 +1073,25 @@ timeout /t 2 /nobreak
 cd server
 start "MCServer" run.bat
 cd ..
+if "%API%"=="1" exit /b 2
 goto 2
+:oobe
+echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
+echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
+echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
+echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
+echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
+timeout /t 1 /nobreak >nul
+echo .
+timeout /t 1 /nobreak >nul
+echo .
+timeout /t 1 /nobreak >nul
+echo .
+timeout /t 1 /nobreak >nul
+echo .
+timeout /t 1 /nobreak >nul
+echo .
+timeout /t 1 /nobreak >nul
+echo %ESC%[31mjust... get... out...%ESC%[0m
+timeout /t 10 /nobreak >nul
+exit
