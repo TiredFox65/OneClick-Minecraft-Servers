@@ -1,50 +1,73 @@
 # Contributing
 
-Thanks for your interest in improving OneClick-Minecraft-Servers! Bug reports,
-documentation improvements, and focused code changes are welcome.
+Thanks for your interest in improving OneClick Minecraft Servers. Bug reports, documentation updates, and focused code changes are welcome.
 
-## Before You Start
+## Before you start
 
-- Check the README and existing GitHub issues to see whether the problem or
-  proposal has already been covered.
-- For substantial changes, open an issue first to discuss the approach.
-- Keep changes focused and avoid including generated server files, backups,
-  logs, or other personal data in commits or issue reports.
+- Read the project documentation and review the current issues before starting work.
+- For larger or behavioral changes, open an issue first so the approach is discussed with the maintainers.
+- Keep changes focused and avoid committing generated server data, backups, logs, or personal files.
 
-## Reporting a Bug
+## Reporting a bug
 
 Open a GitHub issue with:
 
-- The Windows version and the version of `Main.bat` you are using.
-- Clear steps to reproduce the problem and what you expected to happen.
-- The exact error message or relevant logs, with personal or sensitive
-  information removed.
+- your Windows version
+- the `Main.bat` version you are using
+- clear reproduction steps
+- the expected result and the actual behavior
+- the exact error message or logs, with any private data removed
 
-For security issues, follow the private reporting instructions in
-[SECURITY.md](./SECURITY.md) instead of opening a public issue.
+For security issues, follow the private reporting instructions in [SECURITY.md](./SECURITY.md) instead of opening a public issue.
 
-## Submitting a Change
+## Submitting a change
 
-1. Fork the repository and create a branch for your change.
-2. Make the smallest clear change that addresses the issue.
-3. Keep the program compatible with the Windows versions documented in the
-   README, and preserve existing command behavior unless the change requires
-   otherwise.
-4. Update relevant user-facing documentation when behavior or instructions
-   change.
-5. Test the affected behavior via `debug.bat`, then open a pull request describing the
-   motivation, the changes, and how you tested them. Link any related issue.
+1. Fork the repository and create a branch for your fix or feature.
+2. Keep the patch as small and targeted as possible.
+3. Preserve existing server creation behavior unless the change intentionally updates it.
+4. Update the README or other user-facing docs when behavior, setup, or commands change.
+5. Validate the change with the project debug tools before opening a merge request.
 
-## Testing
+## Required validation before a merge request
 
-There is no automated test suite at this time. Test batch-file changes on
-Windows in a disposable working directory. Where applicable, check startup,
-status, settings, and the commands affected by your change. Test backup and
-restore operations only with disposable server data; these operations can
-overwrite files. Changes involving downloads or server installation may
-require Java and an internet connection.
+This project includes a built-in debug harness and a full compatibility flow. Contributors must run the debug validation flow before starting a merge request.
 
-## Project License
+Use the project root and run:
 
-By submitting a contribution, you agree that it may be distributed under the
-project's [MIT License](./LICENSE).
+```bat
+debug.bat all
+```
+
+You can also inspect the available debug modes with:
+
+```bat
+debug.bat help
+debug.bat list
+```
+
+The `debug all` flow runs the automated compatibility harness, which:
+
+- creates isolated debug copies of the project
+- exercises supported Minecraft versions
+- validates server generation and startup behavior
+- checks launch and readiness conditions
+- records issue details in `debugreport.txt`
+
+Do not open a merge request until the debug suite passes or any failing result is clearly understood and documented.
+
+## Local testing guidance
+
+There is no full automated CI suite in this repository. Use a disposable Windows working directory and validate the behavior that your change affects.
+
+For server creation or startup changes, confirm:
+
+- the version still creates successfully
+- the generated `run.bat` launches correctly
+- the server process starts and remains healthy
+- the relevant commands still behave as expected
+
+For backup, restore, update, and uninstall flows, test only with disposable data because these operations can overwrite files and folders.
+
+## Project license
+
+By submitting a contribution, you agree that it may be distributed under the project's [MIT License](./LICENSE).
