@@ -127,6 +127,7 @@ Use a public IP or VPN solution for online hosting with friends.
 
 - Thanks to PostHog for Helping with Surveys
 - Thanks to GitHub for Helping with Distributing
+- Debug harness design and implementation assisted by the Copilot SDK AI assistant in VS Code
 
 ## License
 

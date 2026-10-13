@@ -1,10 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 :data_section
-set "VVERSION=4.5"
+set "VVERSION=4.9"
 set "MCVERSIONS=Vanilla-26.3 Paper-26.2 Forge-1.7.10 Forge-1.8.9 Forge-1.12.2 Forge-1.16.5 Forge-1.18.2 Forge-1.19.2 Forge-1.20.1 Forge-1.20.2 Forge-1.20.4 Forge-1.21.1 Forge-1.21.4 Fabric-1.14.4 Fabric-1.15.2 Fabric-1.16.5 Fabric-1.18.2 Fabric-1.19.2 Fabric-1.20.1 Fabric-1.20.4 Fabric-1.21.1 Fabric-1.21.4"
 set "POSTHOG_TOKEN=phc_xZVyhcVfygxCuL33FjfGY8hDXZrhKqZvjbR6MwydmkdQ"
 set "TELEMETRY_QUEUE=%~dp0Telemetry.que"
+for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
 :check_debug
 for %%A in ("%~dp0.") do if /I "%%~nxA"=="debug" (
 set "debugmode=1"
@@ -80,7 +81,6 @@ set "%%A=%%B"
 )
 call :telemetry_cleanup
 :bootload
-for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
 if /I "%~1"=="api" goto API
 goto interactive_launch
 :API
@@ -500,7 +500,7 @@ echo Help, Shows this help.
 echo Ram, Lets you set the RAM Ammount for the Server.
 echo OpenConfig, Opens the Config File^(Do not Touch unless you know what you are doing^)
 echo NoSurvey, Disables Survey Data being Reported to the Creator. ^(Please dont, it helps with Development^)
-echo Contributor, 
+echo Contributor, Enables/Disables Contribution Mode.
 echo UUID, Displays your UUID.
 echo Back, goes back.
 goto settings
@@ -539,13 +539,28 @@ if /I "!survey!"=="true" if /I not "!debugmode!"=="1" call :report contribution_
 call :writeconfig contrib-mode "true"
 set "contrib-mode=true"
 call :report_clear
-echo Contribution mode enabled.
+echo %ESC%[32mContribution mode enabled.%ESC%[0m
+if not exist "debug.bat" curl -fL "https://raw.githubusercontent.com/TiredFox65/OneClick-Minecraft-Servers/main/debug.bat" -o "debug.bat"
+if not exist "debug-harness.ps1" curl -fL "https://raw.githubusercontent.com/TiredFox65/OneClick-Minecraft-Servers/main/debug-harness.ps1" -o "debug-harness.ps1"
+if not exist ".gitignore" curl -fL "https://raw.githubusercontent.com/TiredFox65/OneClick-Minecraft-Servers/main/.gitignore" -o ".gitignore"
+if not exist "CONTRIBUTING.md" curl -fL "https://raw.githubusercontent.com/TiredFox65/OneClick-Minecraft-Servers/main/CONTRIBUTING.md" -o "CONTRIBUTING.md"
 goto settings
 :contributor_left
 call :writeconfig contrib-mode "false"
 set "contrib-mode=false"
 if /I "!survey!"=="true" if /I not "!debugmode!"=="1" call :report contribution_mode_left
-echo Contribution mode disabled.
+echo %ESC%[32mContribution mode disabled.%ESC%[0m
+:CUCMR
+set /p "CUCMF=Do you want to Delete the Installed Contribution Files?(y/n)> "
+if /i "!CUCMF!"=="y" goto CUCMF
+if /i "!CUCMF!"=="n" goto settings
+echo %ESC%[33mSyntax Error: Please Retry.%ESC%[0m
+goto CUCMR
+:CUCMF
+if exist "debug.bat" del "debug.bat"
+if exist "debug-harness.ps1" del "debug-harness.ps1"
+if exist ".gitignore" del ".gitignore"
+if exist "CONTRIBUTING.md" del "CONTRIBUTING.md"
 goto settings
 :setram
 set ModsEmpty=1
@@ -1215,8 +1230,11 @@ if /I "!VERSION!"=="fabric-1.21.1" set "strun=java @user_jvm_args.txt -jar ..\.f
 if /I "!VERSION!"=="fabric-1.21.4" set "strun=java @user_jvm_args.txt -jar ..\.fabric\server\1.21.4-server.jar nogui %%*"
 (
 echo setlocal enabledelayedexpansion
-echo title MCServer
+if defined OCMS_DEBUG_STATUS echo title OCMS-MCServer
+if not defined OCMS_DEBUG_STATUS echo title MCServer
+if defined OCMS_DEBUG_STATUS echo echo running^>"!OCMS_DEBUG_STATUS!"
 echo !strun!
+if defined OCMS_DEBUG_STATUS echo echo exited^>"!OCMS_DEBUG_STATUS!"
 echo exit
 ) > server\run.bat
 
@@ -1232,8 +1250,13 @@ echo exit >> server\restart.bat
 set "CREATE_SUCCESS=false"
 if exist "server\!CREATE_ARTIFACT!" if exist "server\run.bat" if exist "server\eula.txt" set "CREATE_SUCCESS=true"
 timeout /t 2 /nobreak
+if defined OCMS_DEBUG_STATUS echo starting>"!OCMS_DEBUG_STATUS!"
 cd server
+if defined OCMS_DEBUG_STATUS (
+start "OCMS-MCServer" run.bat
+) else (
 start "MCServer" run.bat
+)
 cd ..
 if /I "!CREATE_SUCCESS!"=="true" (
 if /I "!API!"=="1" (
@@ -1244,12 +1267,12 @@ call :report server_created "!CREATE_MCVERSION!" "!CREATE_TYPE!" "!CREATE_RAMS!"
 )
 if "%API%"=="1" exit /b 2
 goto 2
-:oobe
-echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
-echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
-echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
-echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
-echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!%ESC%[0m
+:oob
+echo %ESC%[31mERROR: HOW THE HELL DID YOU GET HERE!
+echo ERROR: HOW THE HELL DID YOU GET HERE!
+echo ERROR: HOW THE HELL DID YOU GET HERE!
+echo ERROR: HOW THE HELL DID YOU GET HERE!
+echo ERROR: HOW THE HELL DID YOU GET HERE!
 timeout /t 1 /nobreak >nul
 echo .
 timeout /t 1 /nobreak >nul
@@ -1261,6 +1284,7 @@ echo .
 timeout /t 1 /nobreak >nul
 echo .
 timeout /t 1 /nobreak >nul
-echo %ESC%[31mjust... get... out...%ESC%[0m
+echo just... get... out...
 timeout /t 10 /nobreak >nul
-exit
+echo ^[DIAGNOSTIC^] Execution escaped the intended control flow.%ESC%[0m
+exit /b 86
